@@ -1,5 +1,6 @@
 import os
 import subprocess
+from google.genai import types
 
 def run_python_file(working_directory, file_path, args=None):
     permitted_wd = os.path.abspath(working_directory)
@@ -40,3 +41,22 @@ def run_python_file(working_directory, file_path, args=None):
 
     except Exception as ex:
         return f'Error: executing Python file {ex}'
+
+
+schema_run_python_file = types.FunctionDeclaration(
+    name="run_python_file",
+    description="Runs the specified .py file with optional arguments as long as it is in the permitted working directory.",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="The .py file to run code from, the code may only make changes within the permitted working directory.",
+            ),
+            "args": types.Schema(
+                type=types.Type.STRING,
+                description="The optional arguments provided, if none given then this value stays None",
+            )
+        }
+    )
+)

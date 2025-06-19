@@ -6,7 +6,7 @@ from functions.write_file import schema_write_file
 from functions.run_python import schema_run_python_file
 from system_prompt import system_prompt
 
-def generate_ai_content(client, messages, is_verbose):
+def generate_ai_content(client, prompt, is_verbose):
     available_functions = types.Tool(
         function_declarations=[
             schema_get_files_info,
@@ -16,27 +16,41 @@ def generate_ai_content(client, messages, is_verbose):
         ]
     )
 
-    response = client.models.generate_content(
-        model="gemini-2.0-flash-001", 
-        contents=messages,
-        config=types.GenerateContentConfig(
-            tools=[available_functions],
-            system_instruction=system_prompt),
-    )
+    messages = [
+        types.Content(role="user", parts=[types.Part(text=prompt)])
+    ]
 
-    if is_verbose:
-        print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-        print(f"Response tokens: {response.usage_metadata.candidates_token_count}\n")
+    i = 0
+    while i < 20:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash-001", 
+            contents=messages,
+            config=types.GenerateContentConfig(
+                tools=[available_functions],
+                system_instruction=system_prompt),
+        )
 
-    if not response.function_calls:
-        return response.text
+        for candidate in response.candidates:
+            messages.append(candidate.content)
+
+        if is_verbose:
+            print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+            print(f"Response tokens: {response.usage_metadata.candidates_token_count}\n")
+
+        if not response.function_calls:
+            return response.text
+        
+        for function_call_part in response.function_calls:
+            function_call_result = call_function(function_call_part, is_verbose)
+            messages.append(function_call_result)
+            if function_call_result.parts[0].function_response.response:
+                print(f"-> {function_call_result.parts[0].function_response.response}")
+            else:
+                raise ValueError("No response found from function call result.")
+        
+        i += 1
     
-    for function_call_part in response.function_calls:
-        function_call_result = call_function(function_call_part, is_verbose)
-        if function_call_result.parts[0].function_response.response and is_verbose:
-            print(f"-> {function_call_result.parts[0].function_response.response}")
-        else:
-            raise ValueError("No response found from function call result.")
+    return response.text
 
 
 def call_function(function_call_part, verbose=False):

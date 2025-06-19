@@ -21,14 +21,11 @@ def main():
     api_key = os.environ.get("GEMINI_API_KEY")
     client = genai.Client(api_key=api_key)
 
-    messages = [
-        types.Content(role="user", parts=[types.Part(text=prompt)])
-    ]
-
     if is_verbose:
         print(f"User Prompt: {prompt}")
 
-    generate_ai_content(client, messages, is_verbose)
+    # Print out the response at the end of the feedback loop from the Gemini agent
+    print(generate_ai_content(client, prompt, is_verbose))
 
 if __name__=="__main__":
     main()
